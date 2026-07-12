@@ -98,6 +98,9 @@ export default function LogActionForm({ user, userProfile, defaultLocation = '',
         ? `[${subcategory}] ${description}`
         : description;
 
+      // Lightweight verification: photo + location = verified
+      const isVerified = !!imageURL && !!location;
+
       const actionData = {
         userId: user.uid,
         userDisplayName: userProfile?.displayName || user.displayName || 'Eco Warrior',
@@ -108,6 +111,7 @@ export default function LogActionForm({ user, userProfile, defaultLocation = '',
         location,
         imageURL,
         creditsEarned: stats.earned,
+        verified: isVerified,
         status: 'approved',
         likes: 0,
         likedBy: [],
@@ -147,7 +151,9 @@ export default function LogActionForm({ user, userProfile, defaultLocation = '',
       }
 
       await updateDoc(userRef, statsUpdate);
-      toast.success(`Action Logged! +${stats.earned} Credits 🌿`);
+      const streakMsg = stats.newStreak > 1 ? ` | 🔥 ${stats.newStreak}-day streak` : '';
+      const multiplierMsg = stats.multiplier > 1 ? ` (${stats.multiplier}x bonus!)` : '';
+      toast.success(`Action Logged! +${stats.earned} Credits${multiplierMsg}${streakMsg} 🌿`);
       
       // Trigger a beautiful gamified confetti explosion!
       confetti({

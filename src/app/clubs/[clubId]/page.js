@@ -7,7 +7,7 @@ import { db } from '@/lib/firebase';
 import { doc, onSnapshot, updateDoc, arrayUnion, arrayRemove, getDoc, collection, addDoc, serverTimestamp, query, where, orderBy, limit, setDoc } from 'firebase/firestore';
 import { useAuth } from '@/context/AuthContext';
 import toast from 'react-hot-toast';
-import { Users, MapPin, Loader2, ArrowLeft, Calendar, Activity, CheckCircle2, X } from 'lucide-react';
+import { Users, MapPin, Loader2, ArrowLeft, Calendar, Activity, CheckCircle2, X, Trophy } from 'lucide-react';
 import clsx from 'clsx';
 import Link from 'next/link';
 
@@ -28,6 +28,7 @@ export default function ClubDetailPage({ params }) {
   const [actionLoading, setActionLoading] = useState(false);
   const [membersData, setMembersData] = useState([]);
   const [actions, setActions] = useState([]);
+  const [activeTab, setActiveTab] = useState('Activity'); // Activity | Leaderboard
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'clubs', clubId), (docSnap) => {
@@ -168,6 +169,9 @@ export default function ClubDetailPage({ params }) {
   }
 
   const isMember = club.members?.includes(user?.uid);
+  
+  // Club leaderboard: sort members by greenCredits descending
+  const leaderboardData = [...membersData].sort((a, b) => (b.greenCredits || 0) - (a.greenCredits || 0));
 
   return (
     <AppLayout>
@@ -178,7 +182,7 @@ export default function ClubDetailPage({ params }) {
         </button>
 
         {/* Hero Section */}
-        <div className="bg-[var(--bg-surface)] rounded-[var(--radius-xl)] p-6 sm:p-10 shadow-sm border border-[var(--border-default)] flex flex-col items-center text-center relative overflow-hidden group">
+        <div className="bg-[var(--bg-surface)] rounded-[var(--radius-xl)] p-6 sm:p-10 shadow-[var(--shadow-card)] border border-[var(--border-default)] flex flex-col items-center text-center relative overflow-hidden group">
           <div className="absolute top-0 left-0 w-full h-32 bg-[var(--bg-subtle)] z-0"></div>
           
           <div className="relative z-10 w-32 h-32 rounded-[var(--radius-xl)] border-4 border-[var(--bg-surface)] shadow-sm overflow-hidden bg-[var(--bg-surface)] flex items-center justify-center text-6xl transition-[var(--transition)] bg-[var(--bg-subtle)]">
@@ -223,22 +227,40 @@ export default function ClubDetailPage({ params }) {
                   "px-8 py-2.5 rounded-[var(--radius-md)] font-medium text-sm transition-[var(--transition)] active:scale-95 flex items-center justify-center gap-2 mx-auto sm:w-auto w-full",
                   isMember 
                     ? "bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] hover:bg-[var(--bg-subtle)] hover:border-[var(--border-strong)]" 
-                    : "bg-[var(--text-primary)] text-white hover:opacity-90 shadow-sm"
+                    : "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] shadow-[var(--shadow-glow-accent)]"
                 )}
               >
                 {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                {!actionLoading && isMember && <CheckCircle2 className="w-4 h-4 text-[var(--accent)]" />}
+                {!actionLoading && isMember && <CheckCircle2 className="w-4 h-4 text-[var(--green)]" />}
                 {isMember ? 'Joined' : 'Join Club'}
               </button>
             </div>
           </div>
         </div>
 
+        {/* Tabs: Activity | Leaderboard */}
+        <div className="bg-[var(--bg-subtle)] rounded-[var(--radius-lg)] p-1 flex items-center w-full shadow-sm">
+          {['Activity', 'Leaderboard'].map(t => (
+            <button
+              key={t}
+              onClick={() => setActiveTab(t)}
+              className={clsx(
+                "flex-1 py-2 text-sm font-medium transition-[var(--transition)] text-center flex items-center justify-center gap-2",
+                activeTab === t ? "bg-[var(--bg-surface)] rounded-[var(--radius-md)] shadow-[0_1px_3px_rgba(0,0,0,0.06)] text-[var(--text-primary)]" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              )}
+            >
+              {t === 'Leaderboard' && <Trophy className="w-4 h-4" />}
+              {t === 'Activity' && <Activity className="w-4 h-4" />}
+              {t}
+            </button>
+          ))}
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
           
           {/* Members Panel */}
           <div className="space-y-6 md:col-span-1">
-            <div className="bg-[var(--bg-surface)] rounded-[var(--radius-xl)] p-6 shadow-sm border border-[var(--border-default)]">
+            <div className="bg-[var(--bg-surface)] rounded-[var(--radius-xl)] p-6 shadow-[var(--shadow-card)] border border-[var(--border-default)]">
               <h3 className="font-semibold text-sm text-[var(--text-primary)] flex items-center justify-between mb-4">
                 <span className="flex items-center gap-2">Members</span>
                 <span className="text-[10px] font-semibold bg-[var(--bg-subtle)] border border-[var(--border-default)] px-2 py-0.5 rounded-[var(--radius-md)] text-[var(--text-secondary)]">{club.memberCount}</span>
@@ -261,34 +283,109 @@ export default function ClubDetailPage({ params }) {
             </div>
           </div>
 
-          {/* Club Activity Feed */}
+          {/* Content: Activity or Leaderboard */}
           <div className="md:col-span-2 space-y-6">
-            <h2 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
-              <Activity className="w-5 h-5 text-[var(--text-muted)]" />
-              Club Activity
-            </h2>
             
-            {actions.length === 0 ? (
-              <div className="text-center py-16 bg-[var(--bg-surface)] rounded-[var(--radius-xl)] border border-[var(--border-default)]">
-                <Activity className="w-10 h-10 text-[var(--border-default)] mx-auto mb-3" />
-                <h3 className="text-sm font-semibold text-[var(--text-primary)]">No recent activity</h3>
-                <p className="text-xs text-[var(--text-muted)] mt-1">Actions by club members appear here.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {actions.map(action => (
-                   <Link href={`/feed`} key={action.id} className="block bg-[var(--bg-surface)] rounded-[var(--radius-lg)] p-4 shadow-sm border border-[var(--border-default)] hover:border-[var(--border-strong)] transition-[var(--transition)]">
-                    <div className="flex items-center gap-3">
-                      <img src={action.userPhotoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${action.userDisplayName}`} alt="" className="w-10 h-10 rounded-full ring-1 ring-[var(--border-default)] bg-[var(--bg-subtle)] object-cover" />
-                      <div>
-                        <p className="text-sm font-semibold text-[var(--text-primary)]">{action.userDisplayName} <span className="font-normal text-[var(--text-secondary)] ml-1">logged {action.actionType}</span></p>
-                        <p className="text-[10px] text-[var(--accent)] bg-[var(--accent-soft)] inline-block px-2 py-0.5 rounded-[var(--radius-full)] mt-1 font-semibold border border-[var(--border-accent)]/20 shadow-sm shadow-[var(--accent)]/5">+{action.creditsEarned}🌿</p>
-                      </div>
-                    </div>
-                   </Link>
-                ))}
-              </div>
+            {activeTab === 'Activity' && (
+              <>
+                <h2 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-[var(--text-muted)]" />
+                  Club Activity
+                </h2>
+                
+                {actions.length === 0 ? (
+                  <div className="text-center py-16 bg-[var(--bg-surface)] rounded-[var(--radius-xl)] border border-[var(--border-default)]">
+                    <Activity className="w-10 h-10 text-[var(--border-default)] mx-auto mb-3" />
+                    <h3 className="text-sm font-semibold text-[var(--text-primary)]">No recent activity</h3>
+                    <p className="text-xs text-[var(--text-muted)] mt-1">Actions by club members appear here.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {actions.map(action => (
+                       <Link href={`/feed`} key={action.id} className="block bg-[var(--bg-surface)] rounded-[var(--radius-lg)] p-4 shadow-[var(--shadow-card)] border border-[var(--border-default)] hover:border-[var(--border-strong)] transition-[var(--transition)]">
+                        <div className="flex items-center gap-3">
+                          <img src={action.userPhotoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${action.userDisplayName}`} alt="" className="w-10 h-10 rounded-full ring-1 ring-[var(--border-default)] bg-[var(--bg-subtle)] object-cover" />
+                          <div>
+                            <p className="text-sm font-semibold text-[var(--text-primary)]">{action.userDisplayName} <span className="font-normal text-[var(--text-secondary)] ml-1">logged {action.actionType}</span></p>
+                            <p className="text-[10px] text-[var(--accent)] bg-[var(--accent-soft)] inline-block px-2 py-0.5 rounded-[var(--radius-full)] mt-1 font-semibold border border-[var(--accent)]/20 shadow-sm">+{action.creditsEarned}🌿</p>
+                          </div>
+                        </div>
+                       </Link>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
+
+            {activeTab === 'Leaderboard' && (
+              <>
+                <h2 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-amber-500" />
+                  Club Leaderboard
+                </h2>
+
+                {leaderboardData.length === 0 ? (
+                  <div className="text-center py-16 bg-[var(--bg-surface)] rounded-[var(--radius-xl)] border border-[var(--border-default)]">
+                    <Trophy className="w-10 h-10 text-[var(--border-default)] mx-auto mb-3" />
+                    <h3 className="text-sm font-semibold text-[var(--text-primary)]">No members yet</h3>
+                    <p className="text-xs text-[var(--text-muted)] mt-1">Join the club to appear on the leaderboard!</p>
+                  </div>
+                ) : (
+                  <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] overflow-hidden shadow-[var(--shadow-card)]">
+                    {/* Header */}
+                    <div className="flex items-center px-4 py-3 bg-[var(--bg-subtle)] border-b border-[var(--border-default)]">
+                      <div className="w-10 text-xs font-medium text-[var(--text-muted)] text-center">#</div>
+                      <div className="flex-1 text-xs font-medium text-[var(--text-muted)]">Member</div>
+                      <div className="w-20 text-xs font-medium text-[var(--text-muted)] text-right">Actions</div>
+                      <div className="w-24 text-xs font-medium text-[var(--text-muted)] text-right">Credits</div>
+                    </div>
+
+                    {/* Rows */}
+                    <div>
+                      {leaderboardData.map((member, index) => {
+                        const rank = index + 1;
+                        const isYou = user?.uid === member.id;
+                        const medalEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
+
+                        return (
+                          <Link href={`/profile/${member.id}`} key={member.id}>
+                            <div className={clsx(
+                              "flex items-center px-4 py-3 border-b border-[var(--border-default)] last:border-0 transition-[var(--transition)] hover:bg-[var(--bg-subtle)]",
+                              isYou && "bg-[var(--accent-soft)] hover:bg-orange-50",
+                              rank <= 3 && "bg-amber-50/30"
+                            )}>
+                              <div className={clsx("w-10 text-center font-mono text-sm font-semibold", isYou ? "text-[var(--accent)]" : "text-[var(--text-muted)]")}>
+                                {medalEmoji || rank}
+                              </div>
+                              
+                              <div className="flex-1 flex items-center gap-3 min-w-0 pr-2">
+                                <img src={member.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${member.displayName}`} alt="" className="w-8 h-8 rounded-full bg-[var(--bg-subtle)] shrink-0 object-cover ring-1 ring-[var(--border-default)]" />
+                                <div className="min-w-0">
+                                  <h4 className={clsx("text-sm font-medium truncate", isYou ? "text-[var(--accent)]" : "text-[var(--text-primary)]")}>
+                                    {member.displayName} {isYou && "(You)"}
+                                  </h4>
+                                  <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-medium">{member.rank || 'Seedling'}</p>
+                                </div>
+                              </div>
+
+                              <div className="w-20 text-right text-sm text-[var(--text-secondary)]">
+                                 {member.totalActions || 0}
+                              </div>
+
+                              <div className="w-24 text-right flex items-center justify-end gap-1 font-mono text-sm">
+                                <span className={clsx("font-semibold", isYou ? "text-[var(--accent)]" : "text-[var(--text-primary)]")}>{member.greenCredits || 0}</span>
+                                <span className="text-[10px] text-[var(--text-muted)]">CR</span>
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
           </div>
 
         </div>

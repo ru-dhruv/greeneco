@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
+import ImpactCard from '@/components/ImpactCard';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, query, where, orderBy, onSnapshot, getDocs, limit, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/context/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
-import { MapPin, Users, Activity, Loader2, Heart, Award, CheckCircle2, Lock } from 'lucide-react';
+import { MapPin, Users, Activity, Loader2, Heart, Award, CheckCircle2, Lock, Flame, ShieldCheck } from 'lucide-react';
 import clsx from 'clsx';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -15,11 +16,16 @@ import FollowListModal from '@/components/FollowListModal';
 import { toggleFollow } from '@/lib/followers';
 import { ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { ECO_ACTIVITIES } from '@/lib/activities';
 
 const getRankPill = (rank) => {
   const styles = {
     'Seedling': 'bg-gray-100 text-gray-600',
     'Sprout': 'bg-green-50 text-green-700',
+    'Sapling': 'bg-emerald-50 text-emerald-700',
+    'Eco Warrior': 'bg-teal-50 text-teal-700',
+    'Planet Guardian': 'bg-amber-50 text-amber-700',
+    'Captain Earth': 'bg-orange-50 text-orange-700',
     'Grove Keeper': 'bg-emerald-50 text-emerald-700',
     'Ecosystem Builder': 'bg-teal-50 text-teal-700',
     'Earth Guardian': 'bg-yellow-50 text-yellow-700',
@@ -28,13 +34,13 @@ const getRankPill = (rank) => {
 };
 
 const getActionPill = (type) => {
-  const styles = {
-    'Tree Planting': 'bg-green-50 text-green-700',
-    'Cleanup': 'bg-sky-50 text-sky-700',
-    'Recycling': 'bg-amber-50 text-amber-700',
-    'Education': 'bg-violet-50 text-violet-700',
-  };
-  return styles[type] || 'bg-rose-50 text-rose-700';
+  const activity = ECO_ACTIVITIES.find(a => a.label === type);
+  return activity ? activity.color : 'bg-gray-100 text-gray-700 border-gray-200';
+};
+
+const getActivityIcon = (type) => {
+  const activity = ECO_ACTIVITIES.find(a => a.label === type);
+  return activity?.icon || null;
 };
 
 const ALL_BADGES = [
@@ -68,7 +74,7 @@ export default function UserProfilePage() {
   const [notFound, setNotFound] = useState(false);
   
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('Actions'); // Actions | Badges | Challenges
+  const [activeTab, setActiveTab] = useState('Actions'); // Actions | Badges | Impact
   
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
@@ -98,6 +104,7 @@ export default function UserProfilePage() {
             challengesCompleted: 0,
             followersCount: 0,
             followingCount: 0,
+            streak: 0,
             createdAt: serverTimestamp()
           };
           await setDoc(doc(db, 'users', userId), newDoc);
@@ -209,13 +216,14 @@ export default function UserProfilePage() {
   }
 
   const userBadgesList = profileUser.badges || [];
+  const streak = profileUser.streak || 0;
 
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto px-4 pt-6 pb-24 space-y-6">
         
         {/* PROFILE HEADER */}
-        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] p-6 shadow-sm overflow-hidden">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] p-6 shadow-[var(--shadow-card)] overflow-hidden">
           
           <div className="flex justify-between items-start gap-4">
              <div className="flex gap-5 flex-1">
@@ -229,6 +237,14 @@ export default function UserProfilePage() {
                       {profileUser.rank || 'Seedling'}
                     </span>
                   </div>
+                  
+                  {/* Streak display */}
+                  {streak > 0 && (
+                    <div className="flex items-center gap-1.5 mt-2">
+                      <Flame className="w-4 h-4 text-amber-500 animate-flame" />
+                      <span className="text-sm font-bold text-amber-600">{streak}-day streak</span>
+                    </div>
+                  )}
                   
                   {profileUser.bio && (
                     <p className="text-sm text-[var(--text-secondary)] mt-2 leading-relaxed">
@@ -303,7 +319,7 @@ export default function UserProfilePage() {
 
         {/* PROFILE TABS */}
         <div className="bg-[var(--bg-subtle)] rounded-[var(--radius-lg)] p-1 flex items-center w-full shadow-sm sticky top-14 z-20">
-          {['Actions', 'Badges'].map(t => (
+          {['Actions', 'Impact', 'Badges'].map(t => (
             <button
               key={t}
               onClick={() => setActiveTab(t)}
@@ -336,33 +352,48 @@ export default function UserProfilePage() {
               <div className="space-y-4">
                 {userActions.map(action => {
                    const timeAgo = action.createdAt?.toDate ? formatDistanceToNow(action.createdAt.toDate(), { addSuffix: true }) : 'Just now';
+                   const activity = ECO_ACTIVITIES.find(a => a.label === action.actionType);
+                   const Icon = activity?.icon;
+                   const verified = action.imageURL && action.location;
+
                    return (
-                     <div key={action.id} className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] p-4 flex flex-col gap-3 hover:border-[var(--border-strong)] transition-colors">
-                       <div className="flex justify-between items-start">
-                         <div>
-                           <span className={clsx("rounded-[var(--radius-full)] px-2.5 py-1 text-[10px] uppercase font-bold tracking-wider", getActionPill(action.actionType))}>{action.actionType}</span>
-                           <span className="text-xs text-[var(--text-muted)] ml-3">{timeAgo}</span>
+                     <div key={action.id} className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] overflow-hidden hover:border-[var(--border-strong)] transition-colors shadow-[var(--shadow-card)]">
+                       {/* Stat strip header */}
+                       <div className="px-4 py-3 flex items-center justify-between gap-2">
+                         <div className="flex items-center gap-2 flex-wrap">
+                           <span className={clsx("rounded-[var(--radius-full)] px-2.5 py-1 text-[10px] uppercase font-bold tracking-wider flex items-center gap-1 border", getActionPill(action.actionType))}>
+                             {Icon && <Icon className="w-3 h-3" />}
+                             {action.actionType}
+                           </span>
+                           <span className="text-xs text-[var(--text-muted)]">{timeAgo}</span>
+                           {verified && (
+                             <span className="flex items-center gap-0.5 text-[10px] font-semibold text-[var(--green)] uppercase">
+                               <ShieldCheck className="w-3 h-3" /> Verified
+                             </span>
+                           )}
                          </div>
-                         <div className="bg-[var(--accent-soft)] text-[var(--accent)] text-xs font-semibold px-2 py-0.5 rounded-[var(--radius-full)] border border-[var(--border-accent)]/20 shadow-sm shadow-[var(--accent)]/5">
+                         <div className="bg-[var(--accent-soft)] text-[var(--accent)] text-xs font-bold px-2.5 py-1 rounded-[var(--radius-full)] border border-[var(--accent)]/20 shadow-sm">
                             +{action.creditsEarned} 🌿
                          </div>
                        </div>
                        
-                       <p className="text-sm text-[var(--text-secondary)]">{action.description}</p>
-                       
-                       {action.location && (
-                          <p className="text-xs text-[var(--text-muted)] flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5" /> {action.location}
-                          </p>
-                       )}
-                       
                        {action.imageURL && (
-                          <div className="w-full h-48 bg-[var(--bg-subtle)] rounded-[var(--radius-md)] overflow-hidden">
-                             <img src={action.imageURL} alt="Proof" className="w-full h-full object-cover" />
-                          </div>
+                         <div className="w-full h-48 bg-[var(--bg-subtle)]">
+                           <img src={action.imageURL} alt="Proof" className="w-full h-full object-cover" />
+                         </div>
                        )}
+                       
+                       <div className="px-4 py-3">
+                         <p className="text-sm text-[var(--text-secondary)]">{action.description}</p>
+                         
+                         {action.location && (
+                            <p className="text-xs text-[var(--text-muted)] flex items-center gap-1 mt-2">
+                              <MapPin className="w-3.5 h-3.5" /> {action.location}
+                            </p>
+                         )}
+                       </div>
 
-                       <div className="flex items-center gap-1 mt-1 text-[var(--text-muted)]">
+                       <div className="px-4 pb-3 flex items-center gap-1 text-[var(--text-muted)]">
                          <Heart className="w-4 h-4 fill-[var(--text-muted)]" />
                          <span className="text-xs font-medium">{action.likes || 0} likes</span>
                        </div>
@@ -374,6 +405,12 @@ export default function UserProfilePage() {
           </div>
         )}
 
+        {activeTab === 'Impact' && (
+          <div className="space-y-4">
+            <ImpactCard profile={profileUser} />
+          </div>
+        )}
+
         {activeTab === 'Badges' && (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
              {ALL_BADGES.map(badge => {
@@ -381,7 +418,7 @@ export default function UserProfilePage() {
                 const isEarned = !!earnedBadge;
                 return (
                   <div key={badge.id} className={clsx(
-                    "bg-[var(--bg-subtle)] rounded-[var(--radius-lg)] p-4 text-center border transition-[var(--transition)] flex flex-col items-center min-h-[140px] justify-center relative",
+                    "bg-[var(--bg-subtle)] rounded-[var(--radius-lg)] p-4 text-center border transition-[var(--transition)] flex flex-col items-center min-h-[140px] justify-center relative stat-card",
                     isEarned ? "border-[var(--accent)]/30 bg-[var(--bg-surface)] shadow-sm" : "border-transparent opacity-60 grayscale-[50%]"
                   )}>
                     <div className="text-4xl mb-2">{badge.emoji}</div>

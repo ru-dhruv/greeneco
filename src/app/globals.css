@@ -2,31 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  /* Backgrounds */
-  --bg-base: #f7f7f5;
+  /* Backgrounds — warm, earthy neutrals */
+  --bg-base: #faf9f7;
   --bg-surface: #ffffff;
-  --bg-subtle: #f0f0ee;
-  --bg-accent-soft: #f0fdf4;
+  --bg-subtle: #f3f1ed;
+  --bg-accent-soft: #fff7ed;
+  --bg-dark: #1a1a18;
 
   /* Borders */
-  --border-default: #e8e8e6;
-  --border-strong: #d4d4d2;
-  --border-accent: #16a34a;
+  --border-default: #e6e3de;
+  --border-strong: #d1cdc6;
+  --border-accent: #ea580c;
 
   /* Text */
   --text-primary: #1a1a18;
-  --text-secondary: #4a4a48;
-  --text-muted: #8a8a88;
-  --text-accent: #16a34a;
+  --text-secondary: #4a4a44;
+  --text-muted: #8a8a82;
+  --text-accent: #ea580c;
   --text-inverse: #ffffff;
 
-  /* Accent */
-  --accent: #16a34a;
-  --accent-hover: #15803d;
-  --accent-soft: #f0fdf4;
+  /* Primary accent — energetic coral/orange (Strava-inspired energy) */
+  --accent: #ea580c;
+  --accent-hover: #c2410c;
+  --accent-soft: #fff7ed;
+
+  /* Secondary accent — deep forest green */
+  --green: #15803d;
+  --green-light: #22c55e;
+  --green-soft: #f0fdf4;
+  --green-dark: #14532d;
+
+  /* Tertiary accent — warm amber */
+  --amber: #d97706;
+  --amber-light: #fbbf24;
+  --amber-soft: #fffbeb;
 
   /* Feedback */
   --success: #16a34a;
@@ -59,6 +71,12 @@
 
   /* Transitions */
   --transition: all 0.15s ease;
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.08);
+  --shadow-glow-accent: 0 4px 20px rgba(234,88,12,0.15);
+  --shadow-glow-green: 0 4px 20px rgba(22,163,74,0.15);
 }
 
 * { box-sizing: border-box; }
@@ -119,4 +137,32 @@ html { scroll-behavior: smooth; }
 }
 .animate-slide-in {
   animation: slideIn 0.2s ease
+}
+
+/* Streak flame glow animation */
+@keyframes flameGlow {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(251,191,36,0.4)); }
+  50% { filter: drop-shadow(0 0 8px rgba(251,191,36,0.7)); }
+}
+.animate-flame {
+  animation: flameGlow 1.5s ease-in-out infinite;
+}
+
+/* Pulse ring for verified badges */
+@keyframes pulseRing {
+  0% { box-shadow: 0 0 0 0 rgba(22,163,74,0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(22,163,74,0); }
+  100% { box-shadow: 0 0 0 0 rgba(22,163,74,0); }
+}
+.animate-pulse-ring {
+  animation: pulseRing 2s infinite;
+}
+
+/* Stat card hover lift */
+.stat-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
