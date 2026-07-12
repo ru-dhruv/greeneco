@@ -11,15 +11,6 @@ const nextConfig = {
     }
     return config;
   },
-  async redirects() {
-    return [
-      {
-        source: '/:path*',
-        destination: 'https://greeneco-navy.vercel.app/login/',
-        permanent: true,
-      },
-    ];
-  },
 };
 
 export default nextConfig;
